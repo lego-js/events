@@ -10,9 +10,9 @@ const THROTTLED_EVENTS = [
     'wheel',
 ];
 
-const Symbol = window.Symbol || function Symbol(name) {
+const Symbol = window.Symbol || function (name) {
     return `__LEGO__${name}`;
-}
+};
 
 const EVENT_KEY = Symbol('events');
 
@@ -20,36 +20,50 @@ let fnId = 0;
 
 function lookup(node, type, fn) {
     let obj = node[EVENT_KEY];
-    if (typeof obj === 'undefined') obj = node[EVENT_KEY] = {};
+    if (typeof obj === 'undefined') {
+        obj = node[EVENT_KEY] = {};
+    }
 
     let list = obj[type];
-    if (typeof list === 'undefined') list = obj[type] = {};
+    if (typeof list === 'undefined') {
+        list = obj[type] = {};
+    }
 
     if (typeof fn === 'undefined') {
         return list;
     }
 
     if (typeof fn[EVENT_KEY] === 'undefined') {
-        fn[EVENT_KEY] = Symbol(`fnId${++fnId}`);
+        fn[EVENT_KEY] = `fnId${++fnId}`;
     }
 
     let data = list[fn[EVENT_KEY]];
-    if (typeof data === 'undefined') data = list[fn[EVENT_KEY]] = {};
+    if (typeof data === 'undefined' || !data.cb) {
+        data = list[fn[EVENT_KEY]] = {};
+    }
 
     return data;
+}
+
+function removeEventListener(node, type, data) {
+    if (!data.cb) return;
+    node.removeEventListener(type, data.cb);
+    data.cb = false;
 }
 
 function throttle(node, type, fn) {
     const data = lookup(node, type, fn);
     let queued = false;
+    let scope;
 
     function doFn() {
         queued = false;
-        fn(data.e);
+        fn.call(scope, data.e);
         data.e = undefined;
     }
 
-    return e => {
+    return function (e) {
+        scope = this;
         data.e = e;
         if (!queued) {
             requestAnimationFrame(doFn);
@@ -85,6 +99,8 @@ export function on(node, type, fn, ignoreThrottle) {
 }
 
 export function off(node, type, fn) {
+    if (!node) return;
+    
     if (node instanceof NodeList) {
         return Array.prototype.forEach.call(node, n => off(n, type, fn));
     }
@@ -101,17 +117,20 @@ export function off(node, type, fn) {
     // exit if not an EventTarget
     if (!node.removeEventListener) return;
 
+    const data = lookup(node, type, fn);
+
     if (typeof fn === 'undefined') {
-        return lookup(node, type).forEach(data => node.removeEventListener(type, data.cb));
+        Object.keys(data).forEach(key => removeEventListener(node, type, data[key]));
     }
-    
-    return node.removeEventListener(type, lookup(node, type, fn).cb);
+    else {
+        removeEventListener(node, type, data);
+    }
 }
 
 export function one(node, type, fn) {
-    const cb = e => {
+    const cb = function cb(e) {
         off(node, type, cb);
-        fn(e);
+        fn.call(this, e);
     };
     on(node, type, cb, true);
 }
