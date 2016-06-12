@@ -51,24 +51,19 @@ function removeEventListener(node, type, data) {
     data.cb = false;
 }
 
-function throttle(node, type, fn) {
-    const data = lookup(node, type, fn);
-    let queued = false;
+function throttle(fn) {
+    let data = false;
     let scope;
 
     function doFn() {
-        queued = false;
-        fn.call(scope, data.e);
-        data.e = undefined;
+        fn.call(scope, data);
+        data = false;
     }
 
     return function (e) {
+        if (!data) requestAnimationFrame(doFn);
         scope = this;
-        data.e = e;
-        if (!queued) {
-            requestAnimationFrame(doFn);
-            queued = true;
-        }
+        data = e;
     };
 }
 
@@ -94,7 +89,7 @@ export function on(node, type, fn, ignoreThrottle) {
     // only bind events once
     if (data.cb) return;
 
-    data.cb = !ignoreThrottle && ~THROTTLED_EVENTS.indexOf(type) ? throttle(node, type, fn) : fn;
+    data.cb = !ignoreThrottle && ~THROTTLED_EVENTS.indexOf(type) ? throttle(fn) : fn;
     return node.addEventListener(type, data.cb);
 }
 
