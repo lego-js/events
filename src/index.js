@@ -134,3 +134,42 @@ export function one(node, type, fn) {
     };
     on(node, type, cb, true);
 }
+
+export function bind($, forceBind) {
+    if (!$) return;
+
+    if (!$.on || forceBind) {
+        $.on = on;
+
+        $.fn.on = function (type, fn, ignoreThrottle) {
+            this.forEach(node => {
+                on(node, type, fn, ignoreThrottle);
+            });
+            return this;
+        };
+    }
+
+    if (!$.off || forceBind) {
+        $.off = off;
+
+        $.fn.off = function (type, fn) {
+            this.forEach(node => {
+                off(node, type, fn);
+            });
+            return this;
+        };
+    }
+
+    if (!$.one || forceBind) {
+        $.one = one;
+
+        $.fn.one = function (type, fn) {
+            this.forEach(node => {
+                one(node, type, fn);
+            });
+            return this;
+        };
+    }
+}
+
+bind(window.legoCore || window.$);
