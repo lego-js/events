@@ -1,6 +1,6 @@
 {
   "name": "lego-events",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple DOM events with built in throttling",
   "main": "src/index.js",
   "scripts": {

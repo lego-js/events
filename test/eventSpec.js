@@ -270,6 +270,54 @@ describe('The event service', function () {
                 done();
             });
         });
+
+        it('can stop listening to throttled events', function (done) {
+            var node = document.createElement('div');
+
+            events.on(node, 'scroll', onScroll);
+            node.dispatchEvent(new Event('scroll'));
+
+            requestAnimationFrame(function() {
+                expect(node.innerHTML).toBe(' scroll ');
+                node.innerHTML = '';
+
+                events.off(node, 'scroll', onScroll);
+                node.dispatchEvent(new Event('scroll'));
+
+                requestAnimationFrame(function() {
+                    expect(node.innerHTML).toBe('');
+                    done();
+                });
+            });
+        });
+
+        it('can add, remove and then re-add a throttled listener', function (done) {
+            var node = document.createElement('div');
+
+            events.on(node, 'scroll', onScroll);
+            node.dispatchEvent(new Event('scroll'));
+
+            requestAnimationFrame(function() {
+                expect(node.innerHTML).toBe(' scroll ');
+                node.innerHTML = '';
+
+                events.off(node, 'scroll', onScroll);
+                node.dispatchEvent(new Event('scroll'));
+
+                requestAnimationFrame(function() {
+                    expect(node.innerHTML).toBe('');
+                    node.innerHTML = '';
+
+                    events.on(node, 'scroll', onScroll);
+                    node.dispatchEvent(new Event('scroll'));
+
+                    requestAnimationFrame(function() {
+                        expect(node.innerHTML).toBe(' scroll ');
+                        done();
+                    });
+                });
+            });
+        });
     });
 
     it('will bypass throttling of high-volume events if third argument is true', function () {
