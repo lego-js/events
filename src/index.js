@@ -10,6 +10,11 @@ const THROTTLED_EVENTS = [
     'wheel',
 ];
 
+const CANECEL_EVENTS = {
+    'mouseleave': 'mousemove',
+    'touchend': 'touchmove'
+};
+
 const Symbol = window.Symbol || function (name) {
     return `__LEGO__${name}`;
 };
@@ -51,19 +56,30 @@ function removeEventListener(node, type, data) {
     data.cb = false;
 }
 
-function throttle(fn) {
-    let data = false;
+function throttle(fn, data) {
+    data.evt = false;
     let scope;
 
     function doFn() {
-        fn.call(scope, data);
-        data = false;
+        fn.call(scope, data.evt);
+        data.evt = false;
     }
 
     return function (e) {
-        if (!data) requestAnimationFrame(doFn);
+        if (!data.evt) data.raf = requestAnimationFrame(doFn);
         scope = this;
-        data = e;
+        data.evt = e;
+    };
+}
+
+function cancelRequest(fn, node, type) {
+    return function (e) {
+        const events = lookup(node, CANECEL_EVENTS[type]);
+        Object.keys(events).forEach(key => {
+            cancelAnimationFrame(events[key].raf);
+            events[key].evt = false
+        });
+        fn.call(this, e);
     };
 }
 
@@ -89,7 +105,7 @@ export function on(node, type, fn, ignoreThrottle) {
     // only bind events once
     if (data.cb) return;
 
-    data.cb = !ignoreThrottle && ~THROTTLED_EVENTS.indexOf(type) ? throttle(fn) : fn;
+    data.cb = !ignoreThrottle && ~THROTTLED_EVENTS.indexOf(type) ? throttle(fn, data) : CANECEL_EVENTS[type] ? cancelRequest(fn, node, type) : fn;
     return node.addEventListener(type, data.cb);
 }
 
